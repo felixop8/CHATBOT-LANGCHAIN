@@ -1,49 +1,22 @@
-import fs from 'fs/promises';
 import dotenv from 'dotenv'
+import express from 'express'
+import path from 'path'
+import router from './routes/openaiRoutes.js';
+
 dotenv.config()
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { createClient } from '@supabase/supabase-js'
-import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 
+const port = process.env.PORT || 6000
 
-/**
- * This script reads a text file, splits it into chunks using a text splitter,
- * and stores the chunks as documents in a Supabase vector store.
- */
-try {
-  const text = await fs.readFile('scrimba-info.txt', 'utf-8');
-  
-  // A text splitter that splits a string into chunks based on specified parameters.
-  const splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 500,
-      separators: ['\n\n', '\n', ' ', ''],
-      chunkOverlap: 50
-  });
-  
+const app = express()
 
-  // Creates documents from the given input text.
-  const output = await splitter.createDocuments([text]);
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
 
-  const sbApiKey = process.env.SUPABASE_API_KEY;
-  const sbUrl = process.env.SUPABASE_PROJECT_URL;
-  const openAIApiKey = process.env.OPENAI_API_KEY;
+// Set static folder
+app.use(express.static(path.join(process.cwd(), 'public')));
 
-  const client = createClient(sbUrl, sbApiKey)
+app.use('/openai', router)
 
-
-  // Stores the chunks as documents in a Supabase vector store.
-  await SupabaseVectorStore.fromDocuments(
-      output,
-      new OpenAIEmbeddings({openAIApiKey}),
-      {
-          client,
-          tableName: 'documents',
-      }
-  ).then(console.log())
-} catch (err) {
-  console.log(err);
-}
-
-
-
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`)
+});
